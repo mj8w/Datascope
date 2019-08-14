@@ -19,26 +19,12 @@ from plotter import logset  # @UnresolvedImport
 
 debug, info, warn, err = logset('decomp')
 
-class DecompBinary(QObject):
-    """ Task intended to be attached to a thread. This receives binary formatted data 
-        and interprets it into data points to be further processed and graphed."""
-    finished = pyqtSignal()
+class DecompBinary():
+    """ Receives binary formatted data and interprets it into data
+        points to be further processed and graphed.
+    """
 
-    def __init__(self, queue):
-        self.queue = queue
-        super(DecompBinary, self).__init__()
-        self.stop = False
-
-    @pyqtSlot()
-    def stop_thread(self):
-        """ Notify the thread to stop running..."""
-        info("DecompBinary.stop_thread()")
-        self.stop = True
-        
-    @pyqtSlot()
-    def read_queue_task(self): # A slot which takes no params
-        """ Run the task of reading the data source queue (which could be a serial port) """
-        info("read_queue_task()")
+    def __init__(self):
         self.delim = cfg["pkg_delimiter"]
         
         # get the data size for each signal type
@@ -48,24 +34,22 @@ class DecompBinary(QObject):
                 self.id_slots[cfg[k].id] = cfg[k].precision
         info("{!r}".format(self.id_slots) )
         
-        self.stop = False
-        
         # initialize a co-routine used to simplify logic of building messages
-        ipt = self.build_pt()
-        next(ipt)
+        self.ipt = self.build_pt()
+        next(self.ipt)
         
-        source = FakeDataSource()
+        self.source = FakeDataSource()
+
+    def read_queue(self): # A slot which takes no params
+        """ Read the data source, interpret the data into graphable points """
+        info("read_queue()") 
         msg = []
-        numbytes = 0
-        for abyte in source.get_sample():
+        for abyte in self.source.get_sample():
+            if abyte == None:   # None means buffer is empty - we have caught up
+                info("caught up") 
+                yield None
+               
             msg.append(abyte)
-            if self.stop:
-                info("Stopping")
-                break
-            numbytes += 1
-            if numbytes == 1000:
-                break  
-              
                 
             #try:
             #    by = self.queue.get(timeout = 0.1)
@@ -75,10 +59,10 @@ class DecompBinary(QObject):
             #    continue
             
             # pass 'by' to the packager, and pkg      
-            pkg = ipt.send(abyte)
+            pkg = self.ipt.send(abyte)
             if pkg != None:
                 # a package was decoded, so put it in the data stream
-                self.queue.put(pkg)
+                yield pkg
 
                 # record the activity to the logging system                
                 timestamp , data_type, value = pkg
@@ -94,9 +78,6 @@ class DecompBinary(QObject):
                         info("{}".format(" ".join(["{:02X}".format(b) for b in th8])))
                 msg = []
                  
-
-        self.finished.emit()
-
     def build_pt(self):
         """ 
             Attempt to create a datapoint using the byte stream input 
@@ -132,47 +113,3 @@ class DecompBinary(QObject):
             value /= 1 << fract
             by = yield (timestamp / 1000000., data_type, value) #finally return a value
 
-
-from PyQt5.QtCore import QThread
-from PyQt5.QtWidgets import QApplication, QLabel, QWidget, QGridLayout
-import sys
-# import DecompBinary
-
-class Form(QWidget):
-    
-    def __init__(self):
-        super().__init__()
-        self.label = QLabel("0")
-        self.queue = Queue
-        self.obj = DecompBinary(self.queue)                     # create Worker object and Thread here
-        self.thread = QThread()
-        self.obj.moveToThread(self.thread)                      # Move the Worker object to the Thread object
-        self.obj.finished.connect(self.thread.quit)             # Connect Worker Signals to the Thread slots
-        self.thread.started.connect(self.obj.read_queue_task)   # Connect Thread started signal to Worker slot
-        #self.thread.finished.connect(app.exit)                 # Thread finished signal could close the app
-        self.thread.start() # Start the thread        
-        self.initUI()# Start the form
-
-    
-    def initUI(self):
-        grid = QGridLayout()
-        self.setLayout(grid)
-        grid.addWidget(self.label,0,0)
-    
-        self.move(300, 150)
-        self.setWindowTitle('thread test')
-        self.show()
-    
-    def onIntReady(self, i):
-        self.label.setText("{}".format(i))
-        
-        #print(i)
-
-def main():
-    """    """
-    
-    app = QApplication(sys.argv)
-    form = Form()
-    sys.exit(app.exec_())
-if __name__ == "__main__":
-    main()

@@ -1,5 +1,5 @@
 from PyQt5 import QtWidgets
-from PyQt5.QtCore import QThread, pyqtSignal, pyqtSlot
+from PyQt5.QtCore import QThread, pyqtSignal, pyqtSlot, QTimer
 from queue import Queue, Empty
 
 import pyqtgraph as pg
@@ -47,34 +47,25 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.p2.setClipToView(True)
         self.p1.setRange(xRange=[-1000, 0])
         self.p1.setLimits(xMax=0)
-        self.curve1 = self.p1.plot(pen=(255,255,255,200))
-        self.curve2 = self.p2.plot()
+        self.main_graph = self.p1.plot(pen=(255,255,255,200))
+        self.scroll_graph = self.p2.plot()
     
-        # create the thread that collects the data stream
-        self.queue = Queue()
-        self.thread = QThread()
-        self.obj = DecompBinary(self.queue)               # create Worker object and Thread here
-        
-        #self.obj.finished.connect(self.thread.quit)       # Connect Worker Signals to the Thread slots
-        self.stop_capture.connect(self.obj.stop_thread)
-        self.thread.started.connect(self.obj.read_queue_task)     # Connect Thread started signal to Worker slot
-        self.obj.moveToThread(self.thread)                # Move the Worker object to the Thread object
-        
-        self.thread.finished.connect(self.thread_finished) # Thread finished signal
-        info("Starting thread.")
-        self.thread.start() # Start the thread        
-        
         self.capture_Button.clicked.connect(self.capture_clicked)
         self.capture_Button.setCheckable(True)
         self.capture_Button.toggle()
         
+        self.decoder = DecompBinary()   # the data source 
+        self.data = np.empty(100)  # @UndefinedVariable
+        self.ptr = 0
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.on_update)
+        self.timer.start(40) # collect data by repeatedly calling update
+        
     def capture_clicked(self):
-        if self.capture_Button.isChecked():
-            self.thread.start() # Start the thread 
-            info("Un-checked. Starting thread.")
+        if self.capture_Button.isChecked(): # if is Checked, currently capturing data
+            self.timer.stop()
         else:
-            info("Checked. Emitting stop capture")
-            self.stop_capture.emit()
+            self.timer.start(40) # 25 Hz
             
     @pyqtSlot()
     def thread_finished(self):
@@ -82,23 +73,12 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         info("Thread finished.")
         pass
 
-class DataUpdate():
-    def __init__(self,queue,  curves, terms):
-        self.curves = curves
-        self.queue = queue
-        self.terms = terms
-        self.data = np.empty(100)  # @UndefinedVariable
-        self.ptr = 0
-        
-        self.timer = pg.QtCore.QTimer()
-        self.timer.timeout.connect(self.update)
-
-    def update(self):
-        
-        while(1):
-            try:
-                package = self.queue.get(False)
-            except(Empty):
+    def on_update(self):
+        """ When update timer expires, read all of the contents of the incoming data stream, and 
+            add the data to the graph.
+        """
+        for package in self.decoder.read_queue():
+            if package == None:
                 break
                 
             timestamp, data_type, value = package 
@@ -114,20 +94,15 @@ class DataUpdate():
                 self.data = np.empty(self.data.shape[0] * 2)
                 self.data[:tmp.shape[0]] = tmp
         
-        for curve, term in zip(self.curves, self.terms):    
-            curve.setData(self.data[:self.ptr])
-            if term:
-                curve.setPos(-self.ptr, 0)
+        self.main_graph.setData(self.data[:self.ptr])
+        self.scroll_graph.setData(self.data[:self.ptr])
+        self.main_graph.setPos(-self.ptr, 0)
 
 
 def main():
     app = QtWidgets.QApplication(sys.argv)
     window = MainWindow()
     
-
-    # timer based threads which produce the data updates
-    update1 = DataUpdate(window.queue, [window.curve1, window.curve2], [True,False])
-    update1.timer.start(40)
     
     window.show()
     app.exec_()
