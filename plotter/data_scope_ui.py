@@ -11,7 +11,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(838, 581)
+        MainWindow.resize(833, 581)
         self.centralwidget = QtWidgets.QWidget(MainWindow)
         self.centralwidget.setObjectName("centralwidget")
         self.horizontalLayoutWidget = QtWidgets.QWidget(self.centralwidget)
@@ -22,11 +22,11 @@ class Ui_MainWindow(object):
         self.horizontalLayout.setObjectName("horizontalLayout")
         self.verticalLayout = QtWidgets.QVBoxLayout()
         self.verticalLayout.setObjectName("verticalLayout")
-        self.graph = GraphicsWindow(parent=self.horizontalLayoutWidget)
+        self.graph = PlotWidget(self.horizontalLayoutWidget)
         self.graph.setMaximumSize(QtCore.QSize(16777215, 16777215))
         self.graph.setObjectName("graph")
         self.verticalLayout.addWidget(self.graph)
-        self.graphScroll = GraphicsWindow(parent=self.horizontalLayoutWidget)
+        self.graphScroll = PlotWidget(self.horizontalLayoutWidget)
         self.graphScroll.setMaximumSize(QtCore.QSize(16777215, 150))
         self.graphScroll.setFrameShadow(QtWidgets.QFrame.Raised)
         self.graphScroll.setObjectName("graphScroll")
@@ -38,6 +38,9 @@ class Ui_MainWindow(object):
         self.capture_Button.setMaximumSize(QtCore.QSize(80, 16777215))
         self.capture_Button.setObjectName("capture_Button")
         self.verticalLayout_2.addWidget(self.capture_Button)
+        self.ComportCombo = QtWidgets.QComboBox(self.horizontalLayoutWidget)
+        self.ComportCombo.setObjectName("ComportCombo")
+        self.verticalLayout_2.addWidget(self.ComportCombo)
         self.save_Button = QtWidgets.QPushButton(self.horizontalLayoutWidget)
         self.save_Button.setMaximumSize(QtCore.QSize(80, 16777215))
         self.save_Button.setObjectName("save_Button")
@@ -50,7 +53,7 @@ class Ui_MainWindow(object):
         self.horizontalLayout.addLayout(self.verticalLayout_2)
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(MainWindow)
-        self.menubar.setGeometry(QtCore.QRect(0, 0, 838, 21))
+        self.menubar.setGeometry(QtCore.QRect(0, 0, 833, 22))
         self.menubar.setObjectName("menubar")
         MainWindow.setMenuBar(self.menubar)
         self.statusbar = QtWidgets.QStatusBar(MainWindow)
@@ -67,4 +70,14 @@ class Ui_MainWindow(object):
         self.save_Button.setText(_translate("MainWindow", "Save"))
         self.pushButton.setText(_translate("MainWindow", "Load"))
 
-from pyqtgraph import GraphicsWindow
+from pyqtgraph import PlotWidget
+
+if __name__ == "__main__":
+    import sys
+    app = QtWidgets.QApplication(sys.argv)
+    MainWindow = QtWidgets.QMainWindow()
+    ui = Ui_MainWindow()
+    ui.setupUi(MainWindow)
+    MainWindow.show()
+    sys.exit(app.exec_())
+

@@ -13,7 +13,7 @@ from _struct import unpack
     
 from config_default import configuration as cfg  # @Reimport
 
-from fake_data import FakeDataSource
+from serial import Serial, SerialException
 
 from plotter import logset  # @UnresolvedImport
 
@@ -38,26 +38,23 @@ class DecompBinary():
         self.ipt = self.build_pt()
         next(self.ipt)
         
-        self.source = FakeDataSource()
-
+    def open_serial(self, source):
+        """ Open the source of data and set the queue to read from """
+        self.source = Serial(source, 115200, timeout = 0.05)  # timeout set for visual continuity on graph
+        self.source.open()
+        
     def read_queue(self): # A slot which takes no params
         """ Read the data source, interpret the data into graphable points """
         info("read_queue()") 
         msg = []
-        for abyte in self.source.get_sample():
-            if abyte == None:   # None means buffer is empty - we have caught up
-                info("caught up") 
+        while(1):
+            try:
+                abyte = self.source.read(1)
+            except SerialException:
                 yield None
                
             msg.append(abyte)
                 
-            #try:
-            #    by = self.queue.get(timeout = 0.1)
-            #except Empty:
-            #    # timed out, which allows self.stop to be checked
-            #    # but otherwise just keep trying to get data.
-            #    continue
-            
             # pass 'by' to the packager, and pkg      
             pkg = self.ipt.send(abyte)
             if pkg != None:
@@ -67,7 +64,7 @@ class DecompBinary():
                 # record the activity to the logging system                
                 timestamp , data_type, value = pkg
                 if len(msg) < 10:
-                    debug("{:32s}{:f}, {}, {:f}".format(
+                    info("{:32s}{:f}, {}, {:f}".format(
                         " ".join(["{:02X}".format(b) for b in bytes(msg)]), 
                         timestamp, 
                         data_type, 

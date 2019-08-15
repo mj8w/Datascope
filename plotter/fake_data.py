@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-create a hdf5 data file to use as an example of data input captured in plotter scope
+create a sample data file to use as an example of data input captured in plotter scope
 """
 
 import sys
@@ -177,18 +177,7 @@ class FakeDataSource():
                 yield byt
             
 def main():
-    """ Create a file with binary stream data like we might collect from an embedded target over a serial port.
-        The first part will be a fixed length (16K) section of meta data text field
-        everything after that is binary data like it was captured from a serial port
-    """
-    global precision
-    settings = dump(Settings(0.05))
-    filler = "".join([" " for _ in range(16384 - (len(settings)+1 + len(signals)+1))])
-    metadata = "\n".join([signals,settings,filler])
-    
-    with open("metatest.cpt", "wb") as f:
-        f.write(bytes(metadata, 'utf-8'))
-        f.write(b"".join([pkg for _uS,pkg in binary_stream(200)]))
+    pass
     
 if __name__ == "__main__":
     main()

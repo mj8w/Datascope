@@ -27,7 +27,7 @@
      <item>
       <layout class="QVBoxLayout" name="verticalLayout">
        <item>
-        <widget class="GraphicsWindow" name="graph">
+        <widget class="PlotWidget" name="graph">
          <property name="maximumSize">
           <size>
            <width>16777215</width>
@@ -37,7 +37,7 @@
         </widget>
        </item>
        <item>
-        <widget class="GraphicsWindow" name="graphScroll">
+        <widget class="PlotWidget" name="graphScroll">
          <property name="maximumSize">
           <size>
            <width>16777215</width>
@@ -52,7 +52,7 @@
       </layout>
      </item>
      <item>
-      <layout class="QVBoxLayout" name="verticalLayout_2" stretch="0,0,0,0">
+      <layout class="QVBoxLayout" name="verticalLayout_2" stretch="0,0,0,0,0">
        <item>
         <widget class="QPushButton" name="capture_Button">
          <property name="maximumSize">
@@ -65,6 +65,9 @@
           <string>Capture</string>
          </property>
         </widget>
+       </item>
+       <item>
+        <widget class="QComboBox" name="ComportCombo"/>
        </item>
        <item>
         <widget class="QPushButton" name="save_Button">
@@ -110,7 +113,7 @@
      <x>0</x>
      <y>0</y>
      <width>833</width>
-     <height>21</height>
+     <height>22</height>
     </rect>
    </property>
   </widget>
@@ -118,7 +121,7 @@
  </widget>
  <customwidgets>
   <customwidget>
-   <class>GraphicsWindow</class>
+   <class>PlotWidget</class>
    <extends>QGraphicsView</extends>
    <header>pyqtgraph</header>
   </customwidget>
