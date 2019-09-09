@@ -1,15 +1,15 @@
-from PyQt5 import QtCore, QtWidgets
+import numpy as np
+from PyQt5 import QtWidgets, uic
 import pyqtgraph as pg
 import sys
-import numpy as np
-from data_scope_ui import Ui_MainWindow
-  
-     
-class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
+#from data_scope_ui import Ui_MainWindow
+
+class MainWindow(QtWidgets.QMainWindow):
     """ Create the main window from the Qt Designer generated file """
     def __init__(self):
-        super(MainWindow, self).__init__()
-        self.setupUi(self) # Set up the user interface from Designer.
+        super().__init__()
+        #self.setupUi(self) # Set up the user interface from Designer.
+        uic.loadUi('data_scope.ui', self)
         #self.graph.nextRow()
         
         lr = pg.LinearRegionItem([400,700])
