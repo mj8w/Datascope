@@ -45,8 +45,21 @@ class MainWindow(QtWidgets.QMainWindow):
         self.data = np.empty(100)
         self.ptr = 0
 
+        # process Capture button feature
+
+        # the capture button
+        self.capture_Button.setCheckable(True)
+        self.capture_Button.toggled.connect(self.onButtonToggle)
+        # The timer processes self.update, which captures data.
         self.timer = pg.QtCore.QTimer()
         self.timer.timeout.connect(self.update)
+
+    def onButtonToggle(self, checked):
+        if(checked):
+            # timer based threads which produce the data updates
+            self.timer.start(20)
+        else:
+            self.timer.stop()
 
     def update(self):
         self.data[self.ptr] = np.random.normal()
@@ -67,9 +80,6 @@ class MainWindow(QtWidgets.QMainWindow):
 def main():
     app = QtWidgets.QApplication(sys.argv)
     window = MainWindow()
-
-    # timer based threads which produce the data updates
-    window.timer.start(20)
 
     window.show()
     app.exec_()
