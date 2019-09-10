@@ -2,7 +2,9 @@ import numpy as np
 from PyQt5 import QtWidgets, uic
 import pyqtgraph as pg
 import sys
-# from data_scope_ui import Ui_MainWindow
+import config
+
+debug, info, warn, err = config.logset('decomp')
 
 class MainWindow(QtWidgets.QMainWindow):
     """ Create the main window from the Qt Designer generated file """
@@ -25,20 +27,20 @@ class MainWindow(QtWidgets.QMainWindow):
         self.scroll.setDownsampling(mode = 'peak')
         self.scroll.showAxis('bottom', False)
 
-        self.plot_count = 4
+        self.plot_count = config.max_signal_count
 
         self.plots = [
             self.scope.plot(pen = (255, 0, 0), name = "Red"),
             self.scope.plot(pen = (0, 255, 0), name = "Green"),
             self.scope.plot(pen = (0, 0, 255), name = "Blue"),
-            self.scope.plot(pen = (0, 255, 255), name = "Aqua"),
+            self.scope.plot(pen = (255, 255, 0), name = "Yellow"),
             ]
 
         self.scroll_plots = [
             self.scroll.plot(pen = (255, 0, 0), name = "Red"),
             self.scroll.plot(pen = (0, 255, 0), name = "Green"),
             self.scroll.plot(pen = (0, 0, 255), name = "Blue"),
-            self.scroll.plot(pen = (0, 255, 255), name = "Aqua"),
+            self.scroll.plot(pen = (255, 255, 0), name = "Yellow"),
             ]
 
         # "Linear region" - selection in scroll window that controls viewing of main window
@@ -68,26 +70,28 @@ class MainWindow(QtWidgets.QMainWindow):
         self.timer = pg.QtCore.QTimer()
         self.timer.timeout.connect(self.update)
 
+    def start_capture(self):
         self.data = np.empty([self.plot_count, 100])
         self.ptr = [0 for _i in range(self.plot_count)]
         self.max_data = 0
+        self.timer.start(20) # start the timer based thread which produces the data updates
 
     def onButtonToggle(self, checked):
         if(checked):
-            self.timer.start(20) # start the timer based thread which produces the data updates
-            self.timestamp = 0 # temporary
+            self.start_capture()
         else:
             self.timer.stop()
 
     def update(self):
         channel = np.random.random_integers(0, 3)
-        i = self.ptr[channel]
-        self.data.itemset((channel, i), np.random.normal())
+        self.data.itemset((channel, self.ptr[channel]), np.random.normal())
         self.ptr[channel] += 1
 
         # re-shape data if it gets too big.
         if self.ptr[channel] >= self.data.shape[1]:
-            np.reshape(self.data, [self.plot_count, self.data.shape[1] * 2])
+            print (self.data.shape)
+            self.data.resize((self.plot_count, self.data.shape[1] * 2))
+            print (self.data.shape)
 
         # apply the updated data to the curves
         i = self.ptr[channel]
