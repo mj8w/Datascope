@@ -1,10 +1,12 @@
 import sys
 import numpy as np
+from queue import Empty
 from PyQt5 import QtWidgets, uic
 import pyqtgraph as pg
 from serial.tools.list_ports import comports
 
 import config
+from get_csv import CSV_Buffer
 
 debug, info, warn, err = config.logset('decomp')
 
@@ -68,9 +70,9 @@ class MainWindow(QtWidgets.QMainWindow):
         # the capture button
         self.capture_Button.setCheckable(True)
         self.capture_Button.toggled.connect(self.onButtonToggle)
-        # The timer processes self.update, which captures data.
-        self.timer = pg.QtCore.QTimer()
-        self.timer.timeout.connect(self.update)
+        # The capture timer processes self.update, which captures data.
+        self.capture_timer = pg.QtCore.QTimer()
+        self.capture_timer.timeout.connect(self.update)
 
         # Port selection combobox features
 
@@ -82,18 +84,31 @@ class MainWindow(QtWidgets.QMainWindow):
         self.comport_timer.timeout.connect(self.update_comports)
         self.comport_timer.start(2000) # update every 2 seconds
 
+    def onButtonToggle(self, checked):
+        if(checked):
+            if self.start_capture():
+                self.comport_timer.stop()
+            else:
+                self.capture_Button.setChecked(False) # return to unchecked
+        else:
+            self.capture_timer.stop()
+            self.comport_timer.start(2000) # update every 2 seconds
 
     def start_capture(self):
         self.data = np.empty([self.plot_count, 100])
+        self.tstamps = np.empty([self.plot_count, 100])
         self.ptr = [0 for _i in range(self.plot_count)]
         self.max_data = 0
-        self.timer.start(20) # start the timer based thread which produces the data updates
 
-    def onButtonToggle(self, checked):
-        if(checked):
-            self.start_capture()
+        # start data capture thread which composes packets and buffers them
+        self.capture_thread = CSV_Buffer(self.selected_com_port)
+        if self.capture_thread.open():
+            self.capture_thread.start()
+            # start the local capture_timer that updates the plot data
+            self.capture_timer.start(20) # mSec
+            return True
         else:
-            self.timer.stop()
+            return False
 
     def update(self):
         for _i in range(100): # capture up to 100 samples per timeout
