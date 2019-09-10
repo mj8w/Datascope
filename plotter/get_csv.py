@@ -19,8 +19,9 @@ class CSV_Buffer(Thread):
     """
 
     def __init__(self, comport):
-        self.source = Serial(comport, 115200, timeout = 0.05) # timeout set for visual continuity on graph
-        self.source.open()
+        super().__init__()
+
+        self.comport = comport
 
         # queue to store data collected from the serial port
         self.queue = Queue()
@@ -29,9 +30,16 @@ class CSV_Buffer(Thread):
         self.start_time = time()
 
         # start reading the serial port
+        self.source = None
         self.quit = False
         self.daemon = True
-        self.start()
+
+    def open(self):
+        try:
+            self.source = Serial(self.comport, baudrate = 115200, timeout = 0.05) # timeout set for visual continuity on graph
+        except SerialException:
+            return False
+        return True
 
     def get_data(self):
         """ Called by the consumer to get a packet of data """
