@@ -96,20 +96,30 @@ class MainWindow(QtWidgets.QMainWindow):
             self.timer.stop()
 
     def update(self):
-        channel = np.random.random_integers(0, 3)
-        self.data.itemset((channel, self.ptr[channel]), np.random.normal())
-        self.ptr[channel] += 1
+        for _i in range(100): # capture up to 100 samples per timeout
+            try:
+                timestamp, valid_channels, x_data = self.capture_thread.get_data()
+            except Empty:
+                break # stop capturing in this time period
 
-        # re-shape data if it gets too big.
-        if self.ptr[channel] >= self.data.shape[1]:
-            print (self.data.shape)
-            self.data.resize((self.plot_count, self.data.shape[1] * 2))
-            print (self.data.shape)
+            for channel in range(self.plot_count):
+                if valid_channels & (1 << channel):
+
+                    # set the data point
+                    self.data.itemset((channel, self.ptr[channel]), x_data[channel])
+                    self.tstamps.itemset((channel, self.ptr[channel]), timestamp)
+                    self.ptr[channel] += 1
+
+                    # re-shape data storage if it gets filled up
+                    if self.ptr[channel] >= self.data.shape[1]:
+                        self.data.resize((self.plot_count, self.data.shape[1] * 2))
+                        self.tstamps.resize((self.plot_count, self.tstamps.shape[1] * 2))
 
         # apply the updated data to the curves
-        i = self.ptr[channel]
-        self.plots[channel].setData(self.data[channel, :i])
-        self.scroll_plots[channel].setData(self.data[channel, :i])
+        for channel in range(self.plot_count):
+            i = self.ptr[channel]
+            self.plots[channel].setData(self.data[channel, :i], self.tstamps[channel, :i])
+            self.scroll_plots[channel].setData(self.data[channel, :i], self.tstamps[channel, :i])
 
         print("update setRegion")
         self.max_data = max(self.max_data, i)
