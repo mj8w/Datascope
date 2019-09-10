@@ -1,7 +1,9 @@
+import sys
 import numpy as np
 from PyQt5 import QtWidgets, uic
 import pyqtgraph as pg
-import sys
+from serial.tools.list_ports import comports
+
 import config
 
 debug, info, warn, err = config.logset('decomp')
@@ -70,6 +72,17 @@ class MainWindow(QtWidgets.QMainWindow):
         self.timer = pg.QtCore.QTimer()
         self.timer.timeout.connect(self.update)
 
+        # Port selection combobox features
+
+        self.ComportCombo.addItems([a[0] for a in comports()])
+        self.ComportCombo.currentIndexChanged.connect(self.com_port_changed)
+        self.selected_com_port = self.ComportCombo.currentText()
+        # a timer periodically updates the available ports
+        self.comport_timer = pg.QtCore.QTimer()
+        self.comport_timer.timeout.connect(self.update_comports)
+        self.comport_timer.start(2000) # update every 2 seconds
+
+
     def start_capture(self):
         self.data = np.empty([self.plot_count, 100])
         self.ptr = [0 for _i in range(self.plot_count)]
@@ -101,6 +114,29 @@ class MainWindow(QtWidgets.QMainWindow):
         print("update setRegion")
         self.max_data = max(self.max_data, i)
         self.lr.setRegion([0, self.max_data])
+
+    def com_port_changed(self, i):
+        self.selected_com_port = self.ComportCombo.currentText()
+
+    def update_comports(self):
+        """ Called by timer service to update the list of comports """
+        available = set([a[0] for a in comports()])
+
+        shown = []
+        for count in range(self.ComportCombo.count()):
+            shown.append(self.ComportCombo.itemText(count))
+
+        for a in available:
+            if a not in shown:
+                self.ComportCombo.addItem(a)
+                shown.append(a)
+
+        for s in shown:
+            if s not in available:
+                # find item to remove
+                for count in range(self.ComportCombo.count()):
+                    if self.ComportCombo.itemText(count) == s:
+                        self.ComportCombo.removeItem(count)
 
 def main():
     app = QtWidgets.QApplication(sys.argv)
