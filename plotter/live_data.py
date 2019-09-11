@@ -10,6 +10,48 @@ from get_csv import CSV_Buffer
 
 debug, info, warn, err = config.logset('decomp')
 
+class PlotData():
+
+    def __init__(self, scope, scroll, pen, name):
+        self.scope = scope.plot(pen = pen, name = name)
+        self.scroll = scroll.plot(pen = pen, name = name)
+        self.size = 10000
+        self.data = np.empty(self.size)
+        self.tstamp = np.empty(self.size)
+        self.ptr = 0
+
+    def reset(self):
+        self.data = np.empty(self.size)
+        self.tstamp = np.empty(self.size)
+        self.ptr = 0
+
+    def set_point(self, timestamp, data):
+        self.tstamp[self.ptr] = timestamp
+        self.data[self.ptr] = data
+        self.ptr += 1
+        if self.ptr >= self.size:
+            self.increase_storage()
+
+    def increase_storage(self):
+        new_sz = self.size + 10000
+
+        tmp = self.tstamp
+        self.tstamp = np.empty(new_sz)
+        self.tstamp[:self.size] = tmp
+
+        tmp = self.data
+        self.data = np.empty(new_sz)
+        self.data[:self.size] = tmp
+
+        self.size = new_sz
+
+    def display(self):
+        self.scope.setData(self.tstamp[:self.ptr], self.data[:self.ptr])
+        self.scroll.setData(self.tstamp[:self.ptr], self.data[:self.ptr])
+
+    def limits(self): # returns tuple of beginning and end timestamps
+        return(self.tstamp[0], self.tstamp[self.ptr - 1])
+
 class MainWindow(QtWidgets.QMainWindow):
     """ Create the main window from the Qt Designer generated file """
 
@@ -33,23 +75,16 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.plot_count = config.max_signal_count
 
-        self.plots = [
-            self.scope.plot(pen = (255, 0, 0), name = "Red"),
-            self.scope.plot(pen = (0, 255, 0), name = "Green"),
-            self.scope.plot(pen = (0, 0, 255), name = "Blue"),
-            self.scope.plot(pen = (255, 255, 0), name = "Yellow"),
-            ]
-
-        self.scroll_plots = [
-            self.scroll.plot(pen = (255, 0, 0), name = "Red"),
-            self.scroll.plot(pen = (0, 255, 0), name = "Green"),
-            self.scroll.plot(pen = (0, 0, 255), name = "Blue"),
-            self.scroll.plot(pen = (255, 255, 0), name = "Yellow"),
+        self.plot_data = [
+            PlotData(self.scope, self.scroll, (255, 0, 0), "Red"),
+            PlotData(self.scope, self.scroll, (0, 255, 0), "Green"),
+            PlotData(self.scope, self.scroll, (0, 0, 255), "Blue"),
+            PlotData(self.scope, self.scroll, (255, 255, 0), "Yellow"),
             ]
 
         # "Linear region" - selection in scroll window that controls viewing of main window
 
-        self.lr = pg.LinearRegionItem([0, 100])
+        self.lr = pg.LinearRegionItem([0, 1])
         self.lr.setZValue(-10)
         self.scroll.addItem(self.lr)
 
@@ -58,12 +93,14 @@ class MainWindow(QtWidgets.QMainWindow):
             print("updatePlot()")
 
         def updateRegion():
-            self.lr.setRegion(self.scope.getViewBox().viewRange()[0])
-            print("updateRegion()")
+            x1, x2 = self.scope.getViewBox().viewRange()[0]
+            self.lr.setRegion([x1, x2])
+            print("updateRegion([{}, {}])".format(x1, x2))
 
         self.lr.sigRegionChanged.connect(updatePlot)
         self.scope.sigXRangeChanged.connect(updateRegion)
         updatePlot()
+        self.shown_channels = 0 # bitmask of channels that actually have data
 
         # Capture button features
 
@@ -96,9 +133,9 @@ class MainWindow(QtWidgets.QMainWindow):
             self.comport_timer.start(2000) # update every 2 seconds
 
     def start_capture(self):
-        self.data = np.empty([self.plot_count, 100])
-        self.tstamps = np.empty([self.plot_count, 100])
-        self.ptr = [0 for _i in range(self.plot_count)]
+
+        for i in range(self.plot_count):
+            self.plot_data[i].reset()
         self.max_data = 0
 
         # start data capture thread which composes packets and buffers them
@@ -118,32 +155,26 @@ class MainWindow(QtWidgets.QMainWindow):
             except Empty:
                 break # stop capturing in this time period
 
+            self.shown_channels |= valid_channels
             for channel in range(self.plot_count):
                 if valid_channels & (1 << channel):
                     debug("DATA: time {:3.4f} chan {:1} val {:4.4}".format(timestamp, channel, x_data[channel]))
                     # set the data point
-                    self.data[channel, self.ptr[channel]] = x_data[channel]
-                    self.tstamps[channel, self.ptr[channel]] = timestamp
-                    self.ptr[channel] += 1
-
-                    # re-shape data storage if it gets filled up
-                    debug("compare @{} {} {}".format(channel, self.ptr[channel], self.data.shape[1]))
-                    if self.ptr[channel] >= self.data.shape[1]:
-                        tmp = self.data
-                        self.data = np.empty(self.data.shape[0], self.data.shape[1] * 2)
-                        self.data[:tmp.shape[0], :tmp.shape[1]] = tmp
-
-                        debug("RESIZE @{} {} {}".format(channel, self.data.shape[1], self.tstamps.shape[1]))
+                    self.plot_data[channel].set_point(timestamp, x_data[channel])
 
         # apply the updated data to the curves
+        min_ts = 999999999999.0
+        max_ts = 0.0
         for channel in range(self.plot_count):
-            i = self.ptr[channel]
-            self.plots[channel].setData(self.tstamps[channel, :i], self.data[channel, :i])
-            self.scroll_plots[channel].setData(self.tstamps[channel, :i], self.data[channel, :i])
+            self.plot_data[channel].display()
+            if self.shown_channels & (1 << channel):
+                limmin, limmax = self.plot_data[channel].limits()
+                min_ts = min(min_ts, limmin)
+                max_ts = max(max_ts, limmax)
 
-        print("update setRegion")
-        self.max_data = max(self.max_data, i)
-        self.lr.setRegion([0, self.max_data])
+        debug("update setRegion {}, {}".format(min_ts, max_ts))
+        # self.scroll.vb.updateViewRange([min_ts, max_ts])
+        self.lr.setRegion([min_ts, max_ts])
 
     def com_port_changed(self, i):
         self.selected_com_port = self.ComportCombo.currentText()
