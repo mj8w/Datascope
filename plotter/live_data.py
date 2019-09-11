@@ -91,6 +91,7 @@ class MainWindow(QtWidgets.QMainWindow):
             else:
                 self.capture_Button.setChecked(False) # return to unchecked
         else:
+            self.capture_thread.stop()
             self.capture_timer.stop()
             self.comport_timer.start(2000) # update every 2 seconds
 
@@ -119,10 +120,10 @@ class MainWindow(QtWidgets.QMainWindow):
 
             for channel in range(self.plot_count):
                 if valid_channels & (1 << channel):
-
+                    debug("DATA: time {:3.4f} chan {:1} val {:4.4}".format(timestamp, channel, x_data[channel]))
                     # set the data point
-                    self.data.itemset((channel, self.ptr[channel]), x_data[channel])
-                    self.tstamps.itemset((channel, self.ptr[channel]), timestamp)
+                    self.data[channel, self.ptr[channel]] = x_data[channel]
+                    self.tstamps[channel, self.ptr[channel]] = timestamp
                     self.ptr[channel] += 1
 
                     # re-shape data storage if it gets filled up
@@ -133,8 +134,8 @@ class MainWindow(QtWidgets.QMainWindow):
         # apply the updated data to the curves
         for channel in range(self.plot_count):
             i = self.ptr[channel]
-            self.plots[channel].setData(self.data[channel, :i], self.tstamps[channel, :i])
-            self.scroll_plots[channel].setData(self.data[channel, :i], self.tstamps[channel, :i])
+            self.plots[channel].setData(self.tstamps[channel, :i], self.data[channel, :i])
+            self.scroll_plots[channel].setData(self.tstamps[channel, :i], self.data[channel, :i])
 
         print("update setRegion")
         self.max_data = max(self.max_data, i)
