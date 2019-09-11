@@ -22,12 +22,12 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.scope = self.graph.addPlot(title = "Captured data")
         self.scope.setDownsampling(mode = 'peak')
-        self.scope.setClipToView(True)
+        # self.scope.setClipToView(True)
 
         # Scroll window
 
         self.scroll = self.graphScroll.addPlot(title = "Select focus")
-        self.scroll.setClipToView(True)
+        # self.scroll.setClipToView(True)
         self.scroll.setDownsampling(mode = 'peak')
         self.scroll.showAxis('bottom', False)
 
@@ -127,9 +127,13 @@ class MainWindow(QtWidgets.QMainWindow):
                     self.ptr[channel] += 1
 
                     # re-shape data storage if it gets filled up
+                    debug("compare @{} {} {}".format(channel, self.ptr[channel], self.data.shape[1]))
                     if self.ptr[channel] >= self.data.shape[1]:
-                        self.data.resize((self.plot_count, self.data.shape[1] * 2))
-                        self.tstamps.resize((self.plot_count, self.tstamps.shape[1] * 2))
+                        tmp = self.data
+                        self.data = np.empty(self.data.shape[0], self.data.shape[1] * 2)
+                        self.data[:tmp.shape[0], :tmp.shape[1]] = tmp
+
+                        debug("RESIZE @{} {} {}".format(channel, self.data.shape[1], self.tstamps.shape[1]))
 
         # apply the updated data to the curves
         for channel in range(self.plot_count):
