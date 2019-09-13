@@ -2,18 +2,14 @@
 """
 Get csv formatted data from serial port and buffer for plotting
 """
-
-from queue import Queue
-from threading import Thread
-from time import time
-
 from serial import Serial, SerialException
 
+from data_thread import DataThread
+
 from config import logset, max_signal_count
+debug, info, warn, err = logset('data')
 
-debug, info, warn, err = logset('serial')
-
-class CSV_Buffer(Thread):
+class CSV_Buffer(DataThread):
     """ Receives csv formatted data and interprets it into data
         points to be further processed and graphed.
     """
@@ -22,17 +18,7 @@ class CSV_Buffer(Thread):
         super().__init__()
 
         self.comport = comport
-
-        # queue to store data collected from the serial port
-        self.queue = Queue()
-
-        # set the timestamp
-        self.start_time = time()
-
-        # start reading the serial port
         self.source = None
-        self.quit = False
-        self.daemon = True
 
     def open(self):
         try:
@@ -40,14 +26,6 @@ class CSV_Buffer(Thread):
         except SerialException:
             return False
         return True
-
-    def get_data(self):
-        """ Called by the consumer to get a packet of data """
-        return self.queue.get_nowait()
-
-    def stop(self):
-        """ Called by consumer when closing the capture activity."""
-        self.quit = True
 
     def run(self):
         """ Class Thread override - the thread to run """
@@ -93,7 +71,3 @@ class CSV_Buffer(Thread):
             except ValueError:
                 debug("*** line='{}' Failed to parse... ***".format(line))
                 pass
-
-    def timestamp(self):
-        return time() - self.start_time
-
