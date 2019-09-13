@@ -4,6 +4,7 @@ from queue import Empty
 from PyQt5 import QtWidgets, uic
 import pyqtgraph as pg
 from serial.tools.list_ports import comports
+from bisect import bisect_left
 
 # TODO: graph windows should expand if window is maximized
 # TODO: Add grid lines
@@ -25,6 +26,7 @@ class PlotData():
     def __init__(self, scope, scroll, pen, name):
         self.scope = scope.plot(pen = pen, name = name)
         self.scroll = scroll.plot(pen = pen, name = name)
+        self.color = pen
         self.size = 10000
         self.data = np.empty(self.size)
         self.tstamp = np.empty(self.size)
@@ -61,6 +63,13 @@ class PlotData():
 
     def limits(self): # returns tuple of beginning and end timestamps
         return(self.tstamp[0], self.tstamp[self.ptr - 1])
+
+    def crosshair_val_text(self, timestamp):
+        # find the data point with this timestamp
+        i = bisect_left(self.tstamp, timestamp)
+
+        color = pg.colorStr(self.color)
+        return "<span style='color: {}'>y1=%0.1f</span>" % (color, self.data[i])
 
 class MainWindow(QtWidgets.QMainWindow):
     """ Create the main window from the Qt Designer generated file """
@@ -131,6 +140,35 @@ class MainWindow(QtWidgets.QMainWindow):
         # Misc static information
 
         self.shown_channels = 0 # bitmask of channels that actually have data
+
+        # cross hair
+
+        def mouseMoved(evt):
+            pos = evt[0] # using signal proxy turns original arguments into a tuple
+            if not self.crosshairs_Check.isChecked():
+                pass
+            if self.scope.sceneBoundingRect().contains(pos):
+                mousePoint = self.scope.vb.mapSceneToView(pos)
+                point = int(mousePoint.x())
+                minlim, maxlim = self.plot_data[0].limits()
+                if point > minlim and point < maxlim:
+                    txt = ["<span style='font-size: 11pt'>x={:0.1f}, ".format(mousePoint.x())]
+                    for pd in self.plot_data:
+                        txt.append(pd.crosshair_val_text(point))
+                    info("  ".join(txt))
+                    self.label.setText("  ".join(txt))
+                self.vLine.setPos(mousePoint.x())
+                self.hLine.setPos(mousePoint.y())
+
+        # assumes crosshair is checked
+        self.vLine = pg.InfiniteLine(angle = 90, movable = False)
+        self.hLine = pg.InfiniteLine(angle = 0, movable = False)
+        self.label = pg.LabelItem(justify = 'right')
+        self.scope.addItem(self.label)
+        self.scope.addItem(self.vLine, ignoreBounds = True)
+        self.scope.addItem(self.hLine, ignoreBounds = True)
+
+        _proxy = pg.SignalProxy(self.scope.scene().sigMouseMoved, rateLimit = 60, slot = mouseMoved)
 
     def onButtonToggle(self, checked):
         if(checked):
