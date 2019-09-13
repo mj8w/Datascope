@@ -62,14 +62,14 @@ class MainWindow(QtWidgets.QMainWindow):
             if self.scope.sceneBoundingRect().contains(pos):
                 mousePoint = self.scope.vb.mapSceneToView(pos)
                 point = mousePoint.x()
-                print("point = {}".format(point))
+                debug("point = {}".format(point))
                 index = self.plot_data[0].index(point)
                 if index is not None:
                     txt = ["<span style='background-color black'>{:1.3f} Sec.".format(self.plot_data[0].tstamp[index])]
                     for channel in range(self.plot_count):
                         if self.shown_channels & (1 << channel):
                             txt.append(self.plot_data[channel].crosshair_val_text(index))
-                    print("  ".join(txt))
+                    debug("  ".join(txt))
                     self.stats_Label.setText("  ".join(txt))
                 self.vLine.setPos(mousePoint.x())
                 self.hLine.setPos(mousePoint.y())

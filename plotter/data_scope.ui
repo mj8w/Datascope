@@ -37,7 +37,7 @@
          </property>
         </widget>
        </item>
-       <item>
+        <item>
          <widget class="GraphicsLayoutWidget" name="graph">
           <property name="minimumSize">
            <size>
