@@ -74,21 +74,19 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.scope = self.graph.addPlot(title = "Captured data")
         self.scope.setDownsampling(mode = 'peak')
-        # self.scope.setClipToView(True)
 
         # Scroll window
 
         self.scroll = self.graphScroll.addPlot(title = "Select focus")
-        # self.scroll.setClipToView(True)
         self.scroll.setDownsampling(mode = 'peak')
         self.scroll.showAxis('bottom', False)
 
         self.plot_count = config.max_signal_count
 
         self.plot_data = [
+            PlotData(self.scope, self.scroll, (0, 0, 255), "Blue"),
             PlotData(self.scope, self.scroll, (255, 0, 0), "Red"),
             PlotData(self.scope, self.scroll, (0, 255, 0), "Green"),
-            PlotData(self.scope, self.scroll, (0, 0, 255), "Blue"),
             PlotData(self.scope, self.scroll, (255, 255, 0), "Yellow"),
             ]
 
@@ -100,17 +98,16 @@ class MainWindow(QtWidgets.QMainWindow):
 
         def updatePlot():
             self.scope.setXRange(*self.lr.getRegion(), padding = 0)
-            print("updatePlot()")
+            debug("updatePlot()")
 
         def updateRegion():
             x1, x2 = self.scope.getViewBox().viewRange()[0]
             self.lr.setRegion([x1, x2])
-            print("updateRegion([{}, {}])".format(x1, x2))
+            debug("updateRegion([{}, {}])".format(x1, x2))
 
         self.lr.sigRegionChanged.connect(updatePlot)
         self.scope.sigXRangeChanged.connect(updateRegion)
         updatePlot()
-        self.shown_channels = 0 # bitmask of channels that actually have data
 
         # Capture button features
 
@@ -130,6 +127,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.comport_timer = pg.QtCore.QTimer()
         self.comport_timer.timeout.connect(self.update_comports)
         self.comport_timer.start(2000) # update every 2 seconds
+
+        # Misc static information
+
+        self.shown_channels = 0 # bitmask of channels that actually have data
 
     def onButtonToggle(self, checked):
         if(checked):
@@ -183,10 +184,9 @@ class MainWindow(QtWidgets.QMainWindow):
                 max_ts = max(max_ts, limmax)
 
         debug("update setRegion {}, {}".format(min_ts, max_ts))
-        # self.scroll.vb.updateViewRange([min_ts, max_ts])
         self.lr.setRegion([min_ts, max_ts])
 
-    def com_port_changed(self, i):
+    def com_port_changed(self, _i):
         self.selected_com_port = self.ComportCombo.currentText()
 
     def update_comports(self):
