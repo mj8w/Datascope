@@ -17,6 +17,7 @@ from serial.tools.list_ports import comports
 
 import config
 from get_csv import CSV_Buffer
+from plot_data import PlotData
 
 debug, info, warn, err = config.logset('decomp')
 
