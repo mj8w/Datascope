@@ -27,6 +27,18 @@
      <item>
       <layout class="QVBoxLayout" name="verticalLayout">
        <item>
+        <widget class="QLabel" name="stats_Label">
+         <property name="font">
+          <font>
+           <pointsize>10</pointsize>
+          </font>
+         </property>
+         <property name="text">
+          <string>Time 0.000 Seconds   &lt;span style='color: red'&gt;Y1&lt;/span&gt;,   &lt;span style='color: green'&gt;Y2&lt;/span&gt;</string>
+         </property>
+        </widget>
+       </item>
+       <item>
         <widget class="GraphicsLayoutWidget" name="graph">
          <property name="maximumSize">
           <size>
