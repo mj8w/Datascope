@@ -16,16 +16,6 @@ from serial.tools.list_ports import comports
 from get_csv import CSV_Buffer
 from plot_data import PlotData
 
-def bisect_left(a, x, lo = 0, hi = None):
-    """Return the index where to insert item x in list a, assuming a is sorted.
-
-    The return value i is such that all e in a[:i] have e < x, and all e in
-    a[i:] have e >= x.  So if x already appears in the list, a.insert(x) will
-    insert just before the leftmost x already there.
-
-    Optional args lo (default 0) and hi (default len(a)) bound the
-    slice of a to be searched.
-    """
 
     if lo < 0:
         raise ValueError('lo must be non-negative')
@@ -36,64 +26,6 @@ def bisect_left(a, x, lo = 0, hi = None):
         if a[mid] < x: lo = mid + 1
         else: hi = mid
     return lo
-
-class PlotData():
-
-    def __init__(self, scope, scroll, pen, name):
-        self.scope = scope.plot(pen = pen, name = name)
-        self.scroll = scroll.plot(pen = pen, name = name)
-        self.color = pg.colorStr(QColor(*pen))
-        self.name = name
-        self.size = 10000
-        self.data = np.empty(self.size)
-        self.tstamp = np.empty(self.size)
-        self.ptr = 0
-
-    def reset(self):
-        self.data = np.empty(self.size)
-        self.tstamp = np.empty(self.size)
-        self.ptr = 0
-
-    def set_point(self, timestamp, data):
-        self.tstamp[self.ptr] = timestamp
-        self.data[self.ptr] = data
-        self.ptr += 1
-        if self.ptr >= self.size:
-            self.increase_storage()
-
-    def increase_storage(self):
-        new_sz = self.size + 10000
-
-        tmp = self.tstamp
-        self.tstamp = np.empty(new_sz)
-        self.tstamp[:self.size] = tmp
-
-        tmp = self.data
-        self.data = np.empty(new_sz)
-        self.data[:self.size] = tmp
-
-        self.size = new_sz
-
-    def display(self):
-        self.scope.setData(self.tstamp[:self.ptr], self.data[:self.ptr])
-        self.scroll.setData(self.tstamp[:self.ptr], self.data[:self.ptr])
-
-    def limits(self): # returns tuple of beginning and end timestamps
-        return(self.tstamp[0], self.tstamp[self.ptr - 1])
-
-    def index(self, timestamp):
-        """ return index to timestamp if it is in data set, otherwise return None """
-        the_list = list(self.tstamp)
-        i = bisect_left(the_list, timestamp, hi = self.ptr)
-        if i > 0.0 and i != len(self.tstamp):
-            return i
-        return None
-
-    def crosshair_val_text(self, index):
-        """ return string with color info and the data value - used for display of values """
-        text = "<span style='color: #{}'>{}={:0.4f}</span>".format(self.color, self.name, self.data[index])
-        print(text)
-        return text
 
 class MainWindow(QtWidgets.QMainWindow):
     """ Create the main window from the Qt Designer generated file """
