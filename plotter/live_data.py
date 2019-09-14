@@ -1,66 +1,27 @@
 import sys
-import numpy as np
 from queue import Empty
 from PyQt5 import QtWidgets, uic
+
 import pyqtgraph as pg
 from serial.tools.list_ports import comports
 
-# TODO: graph windows should expand if window is maximized
-# TODO: Add grid lines
 # TODO: Add optional grid lines
-# TODO: Add optional value display with crosshairs
 # TODO: scroll window should always be 100% - not mouse zoomable
 # TODO: Implement the mouse select window zoom on main graph window
 # TODO: Create a method to display state and state change - i.e. hold data value between samples
 #        we don't want transitions to display as a gradual change between samples
 # TODO: display the number of samples/sec seen on the selected display, perhaps a popup / tooltip
 
-import config
 from get_csv import CSV_Buffer
+from plot_data import PlotData
 
-debug, info, warn, err = config.logset('decomp')
+from init import NoConfig, logset
+try:
+    from config import config
+except ModuleNotFoundError:
+    raise NoConfig
 
-class PlotData():
-
-    def __init__(self, scope, scroll, pen, name):
-        self.scope = scope.plot(pen = pen, name = name)
-        self.scroll = scroll.plot(pen = pen, name = name)
-        self.size = 10000
-        self.data = np.empty(self.size)
-        self.tstamp = np.empty(self.size)
-        self.ptr = 0
-
-    def reset(self):
-        self.data = np.empty(self.size)
-        self.tstamp = np.empty(self.size)
-        self.ptr = 0
-
-    def set_point(self, timestamp, data):
-        self.tstamp[self.ptr] = timestamp
-        self.data[self.ptr] = data
-        self.ptr += 1
-        if self.ptr >= self.size:
-            self.increase_storage()
-
-    def increase_storage(self):
-        new_sz = self.size + 10000
-
-        tmp = self.tstamp
-        self.tstamp = np.empty(new_sz)
-        self.tstamp[:self.size] = tmp
-
-        tmp = self.data
-        self.data = np.empty(new_sz)
-        self.data[:self.size] = tmp
-
-        self.size = new_sz
-
-    def display(self):
-        self.scope.setData(self.tstamp[:self.ptr], self.data[:self.ptr])
-        self.scroll.setData(self.tstamp[:self.ptr], self.data[:self.ptr])
-
-    def limits(self): # returns tuple of beginning and end timestamps
-        return(self.tstamp[0], self.tstamp[self.ptr - 1])
+debug, info, warn, err = logset('decomp')
 
 class MainWindow(QtWidgets.QMainWindow):
     """ Create the main window from the Qt Designer generated file """
@@ -72,40 +33,69 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # Graph window
 
-        self.scope = self.graph.addPlot(title = "Captured data")
+        self.scope = self.graph.addPlot()
         self.scope.setDownsampling(mode = 'peak')
 
         # Scroll window
 
-        self.scroll = self.graphScroll.addPlot(title = "Select focus")
+        self.scroll = self.graphScroll.addPlot()
         self.scroll.setDownsampling(mode = 'peak')
         self.scroll.showAxis('bottom', False)
 
-        self.plot_count = config.max_signal_count
-
+        self.plot_count = config["max_signal_count"]
+        signals = config["signals"]
         self.plot_data = [
-            PlotData(self.scope, self.scroll, (0, 0, 255), "Blue"),
-            PlotData(self.scope, self.scroll, (255, 0, 0), "Red"),
-            PlotData(self.scope, self.scroll, (0, 255, 0), "Green"),
-            PlotData(self.scope, self.scroll, (255, 255, 0), "Yellow"),
+            PlotData(self.scope, self.scroll, signals[0]),
+            PlotData(self.scope, self.scroll, signals[1]),
+            PlotData(self.scope, self.scroll, signals[2]),
+            PlotData(self.scope, self.scroll, signals[3]),
             ]
+
+        # cross hair & Stats label
+        self.vLine = pg.InfiniteLine(angle = 90, movable = False)
+        self.hLine = pg.InfiniteLine(angle = 0, movable = False)
+        self.scope.addItem(self.vLine, ignoreBounds = True)
+        self.scope.addItem(self.hLine, ignoreBounds = True)
+
+        def mouseMoved(pos):
+            if self.crosshairs_Check.isChecked() == False:
+                return
+            if self.scope.sceneBoundingRect().contains(pos):
+                mousePoint = self.scope.vb.mapSceneToView(pos)
+                point = mousePoint.x()
+                debug("point = {}".format(point))
+                index = self.plot_data[0].index(point)
+                if index is not None:
+                    txt = ["<span style='background-color black'>{:1.3f} Sec.".format(self.plot_data[0].tstamp[index])]
+                    for channel in range(self.plot_count):
+                        if self.shown_channels & (1 << channel):
+                            txt.append(self.plot_data[channel].crosshair_val_text(index))
+                    debug("  ".join(txt))
+                    self.stats_Label.setText("  ".join(txt))
+                self.vLine.setPos(mousePoint.x())
+                self.hLine.setPos(mousePoint.y())
+
+        self.scope.scene().sigMouseMoved.connect(mouseMoved)
+        self.crosshairs_Check.stateChanged.connect(lambda:self.onCrosshairs_StateChange(self.crosshairs_Check))
+        self.crosshairs_Check.setChecked(config["xhairs_checked"])
 
         # "Linear region" - selection in scroll window that controls viewing of main window
 
-        self.lr = pg.LinearRegionItem([0, 1])
-        self.lr.setZValue(-10)
-        self.scroll.addItem(self.lr)
+        self.region = pg.LinearRegionItem([0, 1])
+        self.region.setZValue(-10)
+        self.scroll.addItem(self.region)
 
         def updatePlot():
-            self.scope.setXRange(*self.lr.getRegion(), padding = 0)
+            minX, maxX = self.region.getRegion()
+            self.scope.setXRange(minX, maxX, padding = 0)
             debug("updatePlot()")
 
         def updateRegion():
             x1, x2 = self.scope.getViewBox().viewRange()[0]
-            self.lr.setRegion([x1, x2])
+            self.region.setRegion([x1, x2])
             debug("updateRegion([{}, {}])".format(x1, x2))
 
-        self.lr.sigRegionChanged.connect(updatePlot)
+        self.region.sigRegionChanged.connect(updatePlot)
         self.scope.sigXRangeChanged.connect(updateRegion)
         updatePlot()
 
@@ -131,6 +121,14 @@ class MainWindow(QtWidgets.QMainWindow):
         # Misc static information
 
         self.shown_channels = 0 # bitmask of channels that actually have data
+
+    def onCrosshairs_StateChange(self, checkbox):
+        if checkbox.isChecked() == True:
+            self.scope.addItem(self.vLine, ignoreBounds = True)
+            self.scope.addItem(self.hLine, ignoreBounds = True)
+        else:
+            self.scope.removeItem(self.vLine)
+            self.scope.removeItem(self.hLine)
 
     def onButtonToggle(self, checked):
         if(checked):
@@ -184,7 +182,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 max_ts = max(max_ts, limmax)
 
         debug("update setRegion {}, {}".format(min_ts, max_ts))
-        self.lr.setRegion([min_ts, max_ts])
+        self.region.setRegion([min_ts, max_ts])
 
     def com_port_changed(self, _i):
         self.selected_com_port = self.ComportCombo.currentText()

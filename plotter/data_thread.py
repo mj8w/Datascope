@@ -7,7 +7,11 @@ from queue import Queue
 from threading import Thread
 from time import time
 
-from config import logset, max_signal_count
+from init import NoConfig, logset
+try:
+    from config import config
+except ModuleNotFoundError:
+    raise NoConfig
 
 debug, info, warn, err = logset('data')
 

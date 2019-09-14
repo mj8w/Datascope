@@ -6,7 +6,7 @@ from serial import Serial, SerialException
 
 from data_thread import DataThread
 
-from config import logset, max_signal_count
+from config import logset, config
 debug, info, warn, err = logset('data')
 
 class CSV_Buffer(DataThread):
@@ -19,6 +19,7 @@ class CSV_Buffer(DataThread):
 
         self.comport = comport
         self.source = None
+        self.max_signal_count = config["max_signal_count"]
 
     def open(self):
         try:
@@ -62,7 +63,7 @@ class CSV_Buffer(DataThread):
             line = line.strip(" \r\n")
             try:
                 data = [float(x) for x in line.split(',')]
-                data = data[:max_signal_count] # limit data to just what system is capable of.
+                data = data[:self.max_signal_count] # limit data to just what system is capable of.
                 valid_bitmask = (1 << len(data)) - 1 # mark all bits '1' for signals that are valid in the packet
 
                 # compose a packet and buffer it up
