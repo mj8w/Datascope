@@ -4,8 +4,13 @@ import pyqtgraph as pg
 from PyQt5.QtGui import QColor
 from bisect import bisect_left
 
-import config
-debug, info, warn, err = config.logset('decomp')
+from init import NoConfig, logset
+try:
+    from config import config
+except ModuleNotFoundError:
+    raise NoConfig
+
+debug, info, warn, err = logset('decomp')
 
 class PlotData():
 
