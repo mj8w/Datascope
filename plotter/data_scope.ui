@@ -26,17 +26,17 @@
       <item>
        <layout class="QVBoxLayout" name="verticalLayout_2">
         <item>
-        <widget class="QLabel" name="stats_Label">
-         <property name="font">
-          <font>
-           <pointsize>10</pointsize>
-          </font>
-         </property>
-         <property name="text">
-          <string>Time 0.000 Seconds   &lt;span style='color: red'&gt;Y1&lt;/span&gt;,   &lt;span style='color: green'&gt;Y2&lt;/span&gt;</string>
-         </property>
-        </widget>
-       </item>
+         <widget class="QLabel" name="stats_Label">
+          <property name="font">
+           <font>
+            <pointsize>10</pointsize>
+           </font>
+          </property>
+          <property name="text">
+           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+          </property>
+         </widget>
+        </item>
         <item>
          <widget class="GraphicsLayoutWidget" name="graph">
           <property name="minimumSize">
@@ -126,6 +126,9 @@
          <widget class="QCheckBox" name="crosshairs_Check">
           <property name="text">
            <string>Crosshairs</string>
+          </property>
+          <property name="tristate">
+           <bool>false</bool>
           </property>
          </widget>
         </item>
