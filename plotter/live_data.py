@@ -2,9 +2,9 @@ import sys
 import numpy as np
 from queue import Empty
 from PyQt5 import QtWidgets, uic
+from PyQt5.QtGui import QColor
 import pyqtgraph as pg
 from serial.tools.list_ports import comports
-from bisect import bisect_left
 
 # TODO: graph windows should expand if window is maximized
 # TODO: Add grid lines
@@ -21,12 +21,34 @@ from get_csv import CSV_Buffer
 
 debug, info, warn, err = config.logset('decomp')
 
+def bisect_left(a, x, lo = 0, hi = None):
+    """Return the index where to insert item x in list a, assuming a is sorted.
+
+    The return value i is such that all e in a[:i] have e < x, and all e in
+    a[i:] have e >= x.  So if x already appears in the list, a.insert(x) will
+    insert just before the leftmost x already there.
+
+    Optional args lo (default 0) and hi (default len(a)) bound the
+    slice of a to be searched.
+    """
+
+    if lo < 0:
+        raise ValueError('lo must be non-negative')
+    if hi is None:
+        hi = len(a)
+    while lo < hi:
+        mid = (lo + hi) // 2
+        if a[mid] < x: lo = mid + 1
+        else: hi = mid
+    return lo
+
 class PlotData():
 
     def __init__(self, scope, scroll, pen, name):
         self.scope = scope.plot(pen = pen, name = name)
         self.scroll = scroll.plot(pen = pen, name = name)
-        self.color = pen
+        self.color = pg.colorStr(QColor(*pen))
+        self.name = name
         self.size = 10000
         self.data = np.empty(self.size)
         self.tstamp = np.empty(self.size)
@@ -64,12 +86,19 @@ class PlotData():
     def limits(self): # returns tuple of beginning and end timestamps
         return(self.tstamp[0], self.tstamp[self.ptr - 1])
 
-    def crosshair_val_text(self, timestamp):
-        # find the data point with this timestamp
-        i = bisect_left(self.tstamp, timestamp)
+    def index(self, timestamp):
+        """ return index to timestamp if it is in data set, otherwise return None """
+        the_list = list(self.tstamp)
+        i = bisect_left(the_list, timestamp, hi = self.ptr)
+        if i > 0.0 and i != len(self.tstamp):
+            return i
+        return None
 
-        color = pg.colorStr(self.color)
-        return "<span style='color: {}'>y1=%0.1f</span>" % (color, self.data[i])
+    def crosshair_val_text(self, index):
+        """ return string with color info and the data value - used for display of values """
+        text = "<span style='color: #{}'>{}={:0.4f}</span>".format(self.color, self.name, self.data[index])
+        print(text)
+        return text
 
 class MainWindow(QtWidgets.QMainWindow):
     """ Create the main window from the Qt Designer generated file """
@@ -81,7 +110,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # Graph window
 
-        self.scope = self.graph.addPlot(title = "Captured data")
+        self.scope = self.graph.addPlot()
         self.scope.setDownsampling(mode = 'peak')
 
         # Scroll window
@@ -98,6 +127,32 @@ class MainWindow(QtWidgets.QMainWindow):
             PlotData(self.scope, self.scroll, (0, 255, 0), "Green"),
             PlotData(self.scope, self.scroll, (255, 255, 0), "Yellow"),
             ]
+
+        # cross hair & Stats label
+
+        self.vLine = pg.InfiniteLine(angle = 90, movable = False)
+        self.hLine = pg.InfiniteLine(angle = 0, movable = False)
+        self.scope.addItem(self.vLine, ignoreBounds = True)
+        self.scope.addItem(self.hLine, ignoreBounds = True)
+
+        def mouseMoved(pos):
+            if self.scope.sceneBoundingRect().contains(pos):
+                mousePoint = self.scope.vb.mapSceneToView(pos)
+                point = mousePoint.x()
+                print("point = {}".format(point))
+                index = self.plot_data[0].index(point)
+                if index is not None:
+                    txt = ["<span style='background-color black'>{:1.3f} Sec.".format(self.plot_data[0].tstamp[index])]
+
+                    for channel in range(self.plot_count):
+                        if self.shown_channels & (1 << channel):
+                            txt.append(self.plot_data[channel].crosshair_val_text(index))
+                    print("  ".join(txt))
+                    self.stats_Label.setText("  ".join(txt))
+                self.vLine.setPos(mousePoint.x())
+                self.hLine.setPos(mousePoint.y())
+
+        self.scope.scene().sigMouseMoved.connect(mouseMoved)
 
         # "Linear region" - selection in scroll window that controls viewing of main window
 
@@ -140,35 +195,6 @@ class MainWindow(QtWidgets.QMainWindow):
         # Misc static information
 
         self.shown_channels = 0 # bitmask of channels that actually have data
-
-        # cross hair
-
-        def mouseMoved(evt):
-            pos = evt[0] # using signal proxy turns original arguments into a tuple
-            if not self.crosshairs_Check.isChecked():
-                pass
-            if self.scope.sceneBoundingRect().contains(pos):
-                mousePoint = self.scope.vb.mapSceneToView(pos)
-                point = int(mousePoint.x())
-                minlim, maxlim = self.plot_data[0].limits()
-                if point > minlim and point < maxlim:
-                    txt = ["<span style='font-size: 11pt'>x={:0.1f}, ".format(mousePoint.x())]
-                    for pd in self.plot_data:
-                        txt.append(pd.crosshair_val_text(point))
-                    info("  ".join(txt))
-                    self.label.setText("  ".join(txt))
-                self.vLine.setPos(mousePoint.x())
-                self.hLine.setPos(mousePoint.y())
-
-        # assumes crosshair is checked
-        self.vLine = pg.InfiniteLine(angle = 90, movable = False)
-        self.hLine = pg.InfiniteLine(angle = 0, movable = False)
-        self.label = pg.LabelItem(justify = 'right')
-        self.scope.addItem(self.label)
-        self.scope.addItem(self.vLine, ignoreBounds = True)
-        self.scope.addItem(self.hLine, ignoreBounds = True)
-
-        _proxy = pg.SignalProxy(self.scope.scene().sigMouseMoved, rateLimit = 60, slot = mouseMoved)
 
     def onButtonToggle(self, checked):
         if(checked):
