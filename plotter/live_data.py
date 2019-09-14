@@ -1,8 +1,7 @@
 import sys
-import numpy as np
 from queue import Empty
 from PyQt5 import QtWidgets, uic
-from PyQt5.QtGui import QColor
+
 import pyqtgraph as pg
 from serial.tools.list_ports import comports
 
@@ -16,16 +15,13 @@ from serial.tools.list_ports import comports
 from get_csv import CSV_Buffer
 from plot_data import PlotData
 
+from init import NoConfig, logset
+try:
+    from config import config
+except ModuleNotFoundError:
+    raise NoConfig
 
-    if lo < 0:
-        raise ValueError('lo must be non-negative')
-    if hi is None:
-        hi = len(a)
-    while lo < hi:
-        mid = (lo + hi) // 2
-        if a[mid] < x: lo = mid + 1
-        else: hi = mid
-    return lo
+debug, info, warn, err = logset('decomp')
 
 class MainWindow(QtWidgets.QMainWindow):
     """ Create the main window from the Qt Designer generated file """
@@ -46,13 +42,13 @@ class MainWindow(QtWidgets.QMainWindow):
         self.scroll.setDownsampling(mode = 'peak')
         self.scroll.showAxis('bottom', False)
 
-        self.plot_count = config.max_signal_count
-
+        self.plot_count = config["max_signal_count"]
+        signals = config["signals"]
         self.plot_data = [
-            PlotData(self.scope, self.scroll, (0, 0, 255), "Blue"),
-            PlotData(self.scope, self.scroll, (255, 0, 0), "Red"),
-            PlotData(self.scope, self.scroll, (0, 255, 0), "Green"),
-            PlotData(self.scope, self.scroll, (255, 255, 0), "Yellow"),
+            PlotData(self.scope, self.scroll, signals[0]),
+            PlotData(self.scope, self.scroll, signals[1]),
+            PlotData(self.scope, self.scroll, signals[2]),
+            PlotData(self.scope, self.scroll, signals[3]),
             ]
 
         # cross hair & Stats label
@@ -70,7 +66,6 @@ class MainWindow(QtWidgets.QMainWindow):
                 index = self.plot_data[0].index(point)
                 if index is not None:
                     txt = ["<span style='background-color black'>{:1.3f} Sec.".format(self.plot_data[0].tstamp[index])]
-
                     for channel in range(self.plot_count):
                         if self.shown_channels & (1 << channel):
                             txt.append(self.plot_data[channel].crosshair_val_text(index))

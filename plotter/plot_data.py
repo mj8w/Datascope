@@ -1,7 +1,5 @@
 
 import numpy as np
-import pyqtgraph as pg
-from PyQt5.QtGui import QColor
 from bisect import bisect_left
 
 from init import NoConfig, logset
@@ -14,11 +12,15 @@ debug, info, warn, err = logset('decomp')
 
 class PlotData():
 
-    def __init__(self, scope, scroll, pen, name):
-        self.scope = scope.plot(pen = pen, name = name)
-        self.scroll = scroll.plot(pen = pen, name = name)
-        self.color = pg.colorStr(QColor(*pen))
-        self.name = name
+    def __init__(self, scope, scroll, signal):
+        self.name = signal["name"]
+        self.color = signal["color"] # See pyqtgraph.mkColor()
+        self.width = signal["width"]
+        self.precision = signal["precision"]
+        self.scale = signal["scale"]
+
+        self.scope = scope.plot(pen = self.color, name = self.name)
+        self.scroll = scroll.plot(pen = self.color, name = self.name)
         self.size = 10000
         self.data = np.empty(self.size)
         self.tstamp = np.empty(self.size)
@@ -31,7 +33,7 @@ class PlotData():
 
     def set_point(self, timestamp, data):
         self.tstamp[self.ptr] = timestamp
-        self.data[self.ptr] = data
+        self.data[self.ptr] = data * self.scale
         self.ptr += 1
         if self.ptr >= self.size:
             self.increase_storage()
@@ -64,3 +66,5 @@ class PlotData():
             return i
         return None
 
+    def crosshair_val_text(self, index):
+        return "<span style='color: #{}'>{}= {:>{}.{}f}</span>".format(self.color, self.name, self.data[index], self.width, self.precision)
