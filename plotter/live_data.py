@@ -6,7 +6,6 @@ from PyQt5.QtGui import QColor
 import pyqtgraph as pg
 from serial.tools.list_ports import comports
 
-# TODO: graph windows should expand if window is maximized
 # TODO: Add grid lines
 # TODO: Add optional grid lines
 # TODO: Add optional value display with crosshairs
@@ -115,7 +114,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # Scroll window
 
-        self.scroll = self.graphScroll.addPlot(title = "Select focus")
+        self.scroll = self.graphScroll.addPlot()
         self.scroll.setDownsampling(mode = 'peak')
         self.scroll.showAxis('bottom', False)
 
@@ -156,20 +155,21 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # "Linear region" - selection in scroll window that controls viewing of main window
 
-        self.lr = pg.LinearRegionItem([0, 1])
-        self.lr.setZValue(-10)
-        self.scroll.addItem(self.lr)
+        self.region = pg.LinearRegionItem([0, 1])
+        self.region.setZValue(-10)
+        self.scroll.addItem(self.region)
 
         def updatePlot():
-            self.scope.setXRange(*self.lr.getRegion(), padding = 0)
+            minX, maxX = self.region.getRegion()
+            self.scope.setXRange(minX, maxX, padding = 0)
             debug("updatePlot()")
 
         def updateRegion():
             x1, x2 = self.scope.getViewBox().viewRange()[0]
-            self.lr.setRegion([x1, x2])
+            self.region.setRegion([x1, x2])
             debug("updateRegion([{}, {}])".format(x1, x2))
 
-        self.lr.sigRegionChanged.connect(updatePlot)
+        self.region.sigRegionChanged.connect(updatePlot)
         self.scope.sigXRangeChanged.connect(updateRegion)
         updatePlot()
 
@@ -248,7 +248,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 max_ts = max(max_ts, limmax)
 
         debug("update setRegion {}, {}".format(min_ts, max_ts))
-        self.lr.setRegion([min_ts, max_ts])
+        self.region.setRegion([min_ts, max_ts])
 
     def com_port_changed(self, _i):
         self.selected_com_port = self.ComportCombo.currentText()
