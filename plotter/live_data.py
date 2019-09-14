@@ -52,13 +52,14 @@ class MainWindow(QtWidgets.QMainWindow):
             ]
 
         # cross hair & Stats label
-
         self.vLine = pg.InfiniteLine(angle = 90, movable = False)
         self.hLine = pg.InfiniteLine(angle = 0, movable = False)
         self.scope.addItem(self.vLine, ignoreBounds = True)
         self.scope.addItem(self.hLine, ignoreBounds = True)
 
         def mouseMoved(pos):
+            if self.crosshairs_Check.isChecked() == False:
+                return
             if self.scope.sceneBoundingRect().contains(pos):
                 mousePoint = self.scope.vb.mapSceneToView(pos)
                 point = mousePoint.x()
@@ -75,6 +76,8 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.hLine.setPos(mousePoint.y())
 
         self.scope.scene().sigMouseMoved.connect(mouseMoved)
+        self.crosshairs_Check.stateChanged.connect(lambda:self.onCrosshairs_StateChange(self.crosshairs_Check))
+        self.crosshairs_Check.setChecked(config["xhairs_checked"])
 
         # "Linear region" - selection in scroll window that controls viewing of main window
 
@@ -118,6 +121,14 @@ class MainWindow(QtWidgets.QMainWindow):
         # Misc static information
 
         self.shown_channels = 0 # bitmask of channels that actually have data
+
+    def onCrosshairs_StateChange(self, checkbox):
+        if checkbox.isChecked() == True:
+            self.scope.addItem(self.vLine, ignoreBounds = True)
+            self.scope.addItem(self.hLine, ignoreBounds = True)
+        else:
+            self.scope.removeItem(self.vLine)
+            self.scope.removeItem(self.hLine)
 
     def onButtonToggle(self, checked):
         if(checked):

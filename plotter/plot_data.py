@@ -67,4 +67,4 @@ class PlotData():
         return None
 
     def crosshair_val_text(self, index):
-        return "<span style='color: #{}'>{}= {:>{}.{}f}</span>".format(self.color, self.name, self.data[index], self.width, self.precision)
+        return "<span style='color: #{}'>{}= {:>{}.{}f}</span>".format(self.color, self.name, self.data[index] / self.scale, self.width, self.precision)
