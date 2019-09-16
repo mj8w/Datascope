@@ -1,0 +1,36 @@
+You are invited to contribute to this project!
+
+=== Process ===
+
+Please make small incremental changes where possible. Start a page on the wiki and propose your ideas.
+
+Please look over the rest of this document, when it looks right, contribute it through a github pull request.
+
+=== Clean commits and pull requests ===
+
+Please use the following format for commit messages:
+
+ - First line - brief description of the primary change being made
+ - 2nd line   - <blank>
+ - more lines - detailed description of what was done, bugs that were fixed etc.
+ 
+Each commit should run without crashing and represent a completed feature
+
+Each commit message should be meaningful!
+
+=== Coding Style ===
+
+Make sure your coding style matches the style in the existing code.
+
+* Avoid more than one consecutive empty line.
+
+* use spaces, never tabs
+
+* I use Eclipse / Pydev, and if there are too many warnings shown using this tool, I will reject the pull request. I realize that it can be difficult to get Pydev configured, but please do use a static analysis tool where possible. 
+
+
+=== Be patient, and don't take criticism personally ===
+
+Be prepared to have to rework your contribution several times before it is considered acceptable. Once code is in, it's difficult to get it reworked for better quality, so it's important that this is done before the code is even accepted. Don't take it personally; instead appreciate that it is this peer review that makes the code great in the end!
+
+Thanks for reading!
