@@ -51,6 +51,7 @@ I am currently building this on Linux Mint -  but the program should run on any 
 sudo apt install python3-pip
 ```
 
+If you want to modify the UI:
  - Install QT 5 [https://www.qt.io/download](https://www.qt.io/download)   Warning! - this takes several minutes and uses several gigabytes of disk space...
 
 Finally, install these python modules:
@@ -59,7 +60,7 @@ Finally, install these python modules:
 sudo pip3 install numpy pyserial pyqtgraph pyqt5
 ```
 
-Additionally, you might need these for QT:
+Additionally, you might need these for QT on Linux:
 
 ```bash
 sudo apt-get install libfontconfig1 mesa-common-dev libglu1-mesa-dev -y
@@ -80,8 +81,15 @@ As you will likely need to change the program to work with the particular embedd
 
 Otherwise, run it like this (modify to match your installation):
 
+Linux:
 ```bash
 export PYTHONPATH=/usr/lib/python3/dist-packages:/usr/local/lib/python3.6/dist-packages:/usr/lib/python3.6/lib-dynload:/usr/lib/python3.6
+cd Datascope/plotter
+python3 datascope.py
+```
+
+Windows:
+```bash
 cd Datascope/plotter
 python3 live_data.py
 ```

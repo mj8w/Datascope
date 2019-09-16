@@ -1,8 +1,10 @@
 import sys
 from queue import Empty
-from PyQt5 import QtWidgets, uic
+from PyQt5 import QtWidgets, uic, QtCore
 
 import pyqtgraph as pg
+
+from threading import Thread
 from serial.tools.list_ports import comports
 
 # TODO: Add optional grid lines
@@ -21,14 +23,13 @@ try:
 except ModuleNotFoundError:
     raise NoConfig
 
-debug, info, warn, err = logset('decomp')
+debug, info, warn, err = logset('scope')
 
 class MainWindow(QtWidgets.QMainWindow):
     """ Create the main window from the Qt Designer generated file """
 
     def __init__(self):
         super().__init__()
-        # self.setupUi(self) # Set up the user interface from Designer.
         uic.loadUi('data_scope.ui', self)
 
         # Graph window
@@ -54,8 +55,8 @@ class MainWindow(QtWidgets.QMainWindow):
         # cross hair & Stats label
         self.vLine = pg.InfiniteLine(angle = 90, movable = False)
         self.hLine = pg.InfiniteLine(angle = 0, movable = False)
-        self.scope.addItem(self.vLine, ignoreBounds = True)
-        self.scope.addItem(self.hLine, ignoreBounds = True)
+        #self.scope.addItem(self.vLine, ignoreBounds = True)
+        #self.scope.addItem(self.hLine, ignoreBounds = True)
 
         def mouseMoved(pos):
             if self.crosshairs_Check.isChecked() == False:
@@ -76,6 +77,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.hLine.setPos(mousePoint.y())
 
         self.scope.scene().sigMouseMoved.connect(mouseMoved)
+        
         self.crosshairs_Check.stateChanged.connect(lambda:self.onCrosshairs_StateChange(self.crosshairs_Check))
         self.crosshairs_Check.setChecked(config["xhairs_checked"])
 
@@ -100,28 +102,40 @@ class MainWindow(QtWidgets.QMainWindow):
         updatePlot()
 
         # Capture button features
-
+        
         # the capture button
         self.capture_Button.setCheckable(True)
         self.capture_Button.toggled.connect(self.onButtonToggle)
         # The capture timer processes self.update, which captures data.
         self.capture_timer = pg.QtCore.QTimer()
         self.capture_timer.timeout.connect(self.update)
-
+          
         # Port selection combobox features
-
-        self.ComportCombo.addItems([a[0] for a in comports()])
+        
+        self.ports = []
+                            
+        self.ComportCombo.addItems([a[0] for a in self.ports])
         self.ComportCombo.currentIndexChanged.connect(self.com_port_changed)
         self.selected_com_port = self.ComportCombo.currentText()
-        # a timer periodically updates the available ports
-        self.comport_timer = pg.QtCore.QTimer()
+        
+        # a timer periodically updates the available ports 
+        self.comport_timer = QtCore.QTimer()
         self.comport_timer.timeout.connect(self.update_comports)
         self.comport_timer.start(2000) # update every 2 seconds
-
+        self.update_comport_list()   # start thread that updates the comports
+                
         # Misc static information
 
         self.shown_channels = 0 # bitmask of channels that actually have data
-
+        
+    def get_comport_list(self):
+            self.ports = set([a[0] for a in comports()])
+            info("ports read as {}".format(self.ports))
+        
+    def update_comport_list(self):
+        t = Thread(target=self.get_comport_list)
+        t.start()
+        
     def onCrosshairs_StateChange(self, checkbox):
         if checkbox.isChecked() == True:
             self.scope.addItem(self.vLine, ignoreBounds = True)
@@ -129,7 +143,7 @@ class MainWindow(QtWidgets.QMainWindow):
         else:
             self.scope.removeItem(self.vLine)
             self.scope.removeItem(self.hLine)
-
+    
     def onButtonToggle(self, checked):
         if(checked):
             if self.start_capture():
@@ -142,7 +156,8 @@ class MainWindow(QtWidgets.QMainWindow):
             self.comport_timer.start(2000) # update every 2 seconds
 
     def start_capture(self):
-
+        """ Start capture thread and start collecting data """
+        
         for i in range(self.plot_count):
             self.plot_data[i].reset()
         self.max_data = 0
@@ -156,8 +171,9 @@ class MainWindow(QtWidgets.QMainWindow):
             return True
         else:
             return False
-
+        
     def update(self):
+        
         for _i in range(100): # capture up to 100 samples per timeout
             try:
                 timestamp, valid_channels, x_data = self.capture_thread.get_data()
@@ -183,30 +199,34 @@ class MainWindow(QtWidgets.QMainWindow):
 
         debug("update setRegion {}, {}".format(min_ts, max_ts))
         self.region.setRegion([min_ts, max_ts])
-
+        
     def com_port_changed(self, _i):
         self.selected_com_port = self.ComportCombo.currentText()
 
     def update_comports(self):
         """ Called by timer service to update the list of comports """
-        available = set([a[0] for a in comports()])
+
+        debug("update comports {}".format(self.ports))
 
         shown = []
         for count in range(self.ComportCombo.count()):
             shown.append(self.ComportCombo.itemText(count))
 
-        for a in available:
+        for a in self.ports:
             if a not in shown:
                 self.ComportCombo.addItem(a)
                 shown.append(a)
 
         for s in shown:
-            if s not in available:
+            if s not in self.ports:
                 # find item to remove
                 for count in range(self.ComportCombo.count()):
                     if self.ComportCombo.itemText(count) == s:
                         self.ComportCombo.removeItem(count)
-
+                        
+        self.update_comport_list()   # start thread that updates the comports for the next time
+                        
+                        
 def main():
     app = QtWidgets.QApplication(sys.argv)
     window = MainWindow()
