@@ -1,92 +1,119 @@
 # -*- coding: utf-8 -*-
 """
 Decompress binary data into plottable points
+
+
+In this example, we want to accept a packet of values in the format
+
+    <Identifier uint8_t == 0xAA>,<int32_t data>[4]  # Big endian
+
+The decoding is hard coded here. It seems easier to hand code than to 
+make a configuration system that handles all the possible protocol options
+
 """
 from _struct import unpack
 
 from serial import Serial, SerialException
-from plotter import logset # @UnresolvedImport
-debug, info, warn, err = logset('decomp')
 
-class DecompBinary():
+from data_thread import DataThread
+
+from init import NoConfig, logset
+try:
+    from config import config
+except ModuleNotFoundError:
+    raise NoConfig
+
+debug, info, warn, err = logset('data')
+
+class DecodeBinary(DataThread):
     """ Receives binary formatted data and interprets it into data
         points to be further processed and graphed.
     """
 
-    def __init__(self):
-        # initialize a co-routine used to simplify logic of building messages
-        self.ipt = self.build_pt()
-        next(self.ipt)
+    def __init__(self, comport):
+        super().__init__()
 
-    def open_serial(self, source):
+        self.comport = comport
+        self.source = None
+        self.max_signal_count = config["max_signal_count"]
+
+        # co-routines may take some effort to understand
+        # but they simplified the code significantly in this case.
+
+        # initialize a co-routine called self.pipe, which calls self.packager().
+        self.pipe = self.packager()
+        next(self.pipe)
+
+    def open(self):
         """ Open the source of data and set the queue to read from """
-        self.source = Serial(source, 115200, timeout = 0.05) # timeout set for visual continuity on graph
-        self.source.open()
+        try:
+            self.source = Serial(self.comport, baudrate = 115200, timeout = 0.05) # timeout set for visual continuity on graph
+        except SerialException:
+            return False
+        return True
 
-    def read_queue(self): # A slot which takes no params
-        """ Read the data source, interpret the data into graphable points """
-        info("read_queue()")
+    def run(self):
+        """ Class Thread override - the thread to run """
+        self.quit = False
+        debug("start run()")
         msg = []
         while(1):
             try:
                 abyte = self.source.read(1)
             except SerialException:
-                yield None
+                if self.quit:
+                    break
+                continue
 
+            # msg is accumulated just for debugging
             msg.append(abyte)
 
-            # pass 'by' to the packager, and pkg
-            pkg = self.ipt.send(abyte)
-            if pkg != None:
-                # a package was decoded, so put it in the data stream
-                yield pkg
+            # pass 'abyte' to the packager, and pkg gets yielded through the pipe
+            # byte by byte the pipeline is primed, and most of the time the
+            # pkg is not complete, so we get None as a result.
+            pkg = self.pipe.send(abyte)
+            if pkg == None:
+                continue
 
-                # record the activity to the logging system
-                timestamp , data_type, value = pkg
-                if len(msg) < 10:
-                    info("{:32s}{:f}, {}, {:f}".format(
-                        " ".join(["{:02X}".format(b) for b in bytes(msg)]),
-                        timestamp,
-                        data_type,
-                        value))
-                else:
-                    for i in range(0, len(msg), 8):
-                        th8 = msg[i:min(i + 8, len(msg))]
-                        info("{}".format(" ".join(["{:02X}".format(b) for b in th8])))
-                msg = []
+            # a package was decoded, so put it in the data stream
+            self.queue.put(pkg)
 
-    def build_pt(self):
+            # record the activity to the logging system
+            tstamp, data_type, value = pkg
+
+            if len(msg) < 20: # anything longer assume invalid message
+                info("{:32s}{:f}, {}, {:f}".format(
+                    " ".join(["{:02X}".format(b) for b in bytes(msg)]),
+                    tstamp,
+                    data_type,
+                    value))
+            else:
+                for i in range(0, len(msg), 8):
+                    th8 = msg[i:min(i + 8, len(msg))]
+                    info("{}".format(" ".join(["{:02X}".format(b) for b in th8])))
+            msg = []
+
+    def packager(self):
         """ 
             Attempt to create a datapoint using the byte stream input 
-            - this is a coroutine. a = yield b means "yield b", then wait for send(a) call,
-               and assign a to value passed.
+            This is a coroutine. 
+            a = yield b means "yield b", then wait for send(a) call,
+               and then a = value passed.
         """
-        by = yield None
+        by = yield None # get next byte, and None because packet is not complete
         while(1):
-            while by != self.delim:
+            while by != 0xAA:
                 by = yield None
 
-            # have delim - next get timestamp
-            timestamp = yield None
-            for _i in [1, 2, 3]:
-                by = yield None
-                timestamp = (timestamp * 256) + by
-            by = yield None
-            data_type = by
-            try:
-                if self.id_slots[data_type] == None:
-                    continue # restart search for valid characters
-            except IndexError:
-                continue # restart search for valid characters
+            # have deliminator, so collect data
+            tstamp = self.timestamp()
 
-            # get the conversion characteristics for the data field
-            conv, mant, fract = self.id_slots[data_type]
-            bys = []
-            for _i in range(int((mant + fract + 1) / 8)):
-                by = yield None
-                bys.append(by)
+            # collect 4 - 4 byte values
+            bys = bytearray()
+            for _ibyte in range(4 * 4):
+                b = yield None
+                bys.insert(b)
 
-            value = unpack(conv, bytes(bys))[0]
-            value /= 1 << fract
-            by = yield (timestamp / 1000000., data_type, value) # finally return a value
+            d1, d2, d3, d4 = unpack(">iiii", bys)
+            by = yield (tstamp, 0, (d1, d2, d3, d4))
 

@@ -7,13 +7,6 @@ import pyqtgraph as pg
 from threading import Thread
 from serial.tools.list_ports import comports
 
-# TODO: Add optional grid lines
-# TODO: scroll window should always be 100% - not mouse zoomable
-# TODO: Implement the mouse select window zoom on main graph window
-# TODO: Create a method to display state and state change - i.e. hold data value between samples
-#        we don't want transitions to display as a gradual change between samples
-# TODO: display the number of samples/sec seen on the selected display, perhaps a popup / tooltip
-
 from get_csv import CSV_Buffer
 from plot_data import PlotData
 

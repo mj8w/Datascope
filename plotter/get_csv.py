@@ -6,7 +6,12 @@ from serial import Serial, SerialException
 
 from data_thread import DataThread
 
-from init import logset
+from config import logset, config
+try:
+    from config import config
+except ModuleNotFoundError:
+    raise NoConfig
+
 debug, info, warn, err = logset('data')
 
 class CSV_Buffer(DataThread):
@@ -59,7 +64,11 @@ class CSV_Buffer(DataThread):
                 break
 
             # received end of line - what we need for a packet
-            line = "".join([a.decode('utf-8') for a in msg])
+            try:
+                line = "".join([a.decode('utf-8') for a in msg])
+            except UnicodeDecodeError:
+                continue # abort this line - it is invalid
+
             line = line.strip(" \r\n")
             try:
                 data = [float(x) for x in line.split(',')]
