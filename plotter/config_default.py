@@ -4,7 +4,7 @@ This file is stored in the Version Control System. The intended purpose is to co
 """
 
 config = {
-    # number of signals possibly shown. If increased, code modifications have to be made to add the plot curves (in live_data)
+    # number of signals possibly shown. If increased, code modifications have to be made to add the plot curves (in datascope)
     "max_signal_count":4,
 
     # all of the possible signals must be defined even if they aren't being used.
@@ -21,3 +21,17 @@ config = {
     "grids_checked":True,
     "xhairs_checked":True,
 }
+
+import logging
+def logset(logname):
+    ''' convenience sets up a logger object pre-configured with default functions
+        attached to the logtype. That way you can set up all the log functions that 
+        will use the logtype in one line. Usually, you will use one log type per file.
+        You also need to set up the log type in logging.ini.
+    Usage:
+        from <project> import logset
+        debug, info, warn, err = logset('<logtype name>')
+    '''
+    llog = logging.getLogger(logname)
+    llog.propagate = False
+    return (llog.debug, llog.info, llog.warning, llog.error)

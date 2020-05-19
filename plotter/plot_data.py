@@ -8,7 +8,7 @@ try:
 except ModuleNotFoundError:
     raise NoConfig
 
-debug, info, warn, err = logset('decomp')
+debug, info, warn, err = logset('plot')
 
 class PlotData():
 

@@ -3,7 +3,7 @@
  
 from serial.tools.list_ports import comports
 
-from plotter import logset                  # @UnresolvedImport
+from init import logset                  # @UnresolvedImport
 debug, info, warn, err = logset('serial')
 
 

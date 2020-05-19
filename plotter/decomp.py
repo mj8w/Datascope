@@ -4,7 +4,7 @@ Decompress binary data into plottable points
 """
 from _struct import unpack
 
-from plotter import logset # @UnresolvedImport
+from init import logset # @UnresolvedImport
 debug, info, warn, err = logset('decomp')
 
 class DecompBinary():

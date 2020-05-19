@@ -6,7 +6,7 @@ from serial import Serial, SerialException
 
 from data_thread import DataThread
 
-from config import logset, config
+from init import logset
 debug, info, warn, err = logset('data')
 
 class CSV_Buffer(DataThread):
