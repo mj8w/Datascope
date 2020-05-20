@@ -29,8 +29,25 @@ class DataThread(Thread):
         # set the time to offset against the timestamp
         self.start_time = time()
 
+        # a place to save the running data set in order to save to a file for later use
+        self.csv_list = []
+
         self.quit = False
         self.daemon = True
+
+    def save_csv_file(self, filename):
+        """ save the collected data as a csv file that can be loaded for display. """
+        # may want to replace this later because it will take up a lot of memory
+        # could replace with a loop
+        csv_str = "\r\n".join([",".join(list(ta)) for ta in self.csv_list])
+        with open(filename, 'w') as csv_file:
+            csv_file.write(csv_str)
+
+    def save_csv_entry(self, pkg):
+        tstamp, data_type, value = pkg
+        csv_entry = [str(tstamp), str(data_type)]
+        csv_entry.extend([str(v) for v in value])
+        self.csv_list.append(tuple(csv_entry)) 
 
     def open(self):
         """ Override in derived class to open data source. 
