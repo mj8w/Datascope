@@ -6,7 +6,7 @@ from serial import Serial, SerialException
 
 from data_thread import DataThread
 
-from config import logset, config
+from init import NoConfig, logset
 try:
     from config import config
 except ModuleNotFoundError:
@@ -77,6 +77,8 @@ class CSV_Buffer(DataThread):
 
                 # compose a packet and buffer it up
                 self.queue.put((tstamp, valid_bitmask, data))
+                self.save_csv_entry((tstamp, valid_bitmask, data))        # save entry in case we save the plot data to file later
+                
                 debug("{:3.4f} {} {!r}".format(tstamp, valid_bitmask, data))
             except ValueError:
                 debug("*** line='{}' Failed to parse... ***".format(line))
