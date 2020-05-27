@@ -7,12 +7,12 @@ config = {
     # number of signals possibly shown. If increased, code modifications have to be made to add the plot curves (in datascope)
     "max_signal_count":4,
 
-    # classes available are "CSV_Buffer", and "DecodeBinary"
+    # classes available are "CSV_Buffer", "CSV_TS_Buffer", and "DecodeBinary"
     # it is recommended that you copy one of these classes and change it's name to create your own decoder
     # See any of the "get_xxx.py" files for the definitions of these classes
     # and modify it to meet your specific needs. You will need to import the new class in datascope.py
-    "InputClass":"CSV_Buffer",
-
+    "InputClass":"CSV_TS_Buffer",
+    
     # all of the possible signals must be defined even if they aren't being used.
     # colors are those acceptable to pyqtgraph.mkColor()
     # width and precision are arguments for string formatting of the crosshairs statistics

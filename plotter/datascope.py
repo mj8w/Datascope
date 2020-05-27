@@ -9,6 +9,7 @@ from serial.tools.list_ports import comports
 
 # list the input decoder classes that could be used as specified in config.py
 from get_csv import CSV_Buffer
+from get_csv_w_timestamp import CSV_TS_Buffer
 from get_binary import DecodeBinary
 
 from plot_data import PlotData
