@@ -18,8 +18,8 @@ class PlotData():
         self.width = signal["width"]
         self.precision = signal["precision"]
         self.scale = signal["scale"]
-
-        self.scope = scope.plot(pen = self.color, name = self.name)
+        kwargs = signal.get("kwargs",{})
+        self.scope = scope.plot(pen = self.color, name = self.name, **kwargs)
         self.scroll = scroll.plot(pen = self.color, name = self.name)
         self.size = 10000
         self.data = np.empty(self.size)

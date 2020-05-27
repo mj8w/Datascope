@@ -98,7 +98,7 @@ class MainWindow(QtWidgets.QMainWindow):
         
         # the capture button
         self.capture_Button.setCheckable(True)
-        self.capture_Button.toggled.connect(self.onButtonToggle)
+        self.capture_Button.toggled.connect(self.onCaptureToggle)
         # The capture timer processes self.update, which captures data.
         self.capture_timer = pg.QtCore.QTimer()
         self.capture_timer.timeout.connect(self.update)
@@ -123,7 +123,7 @@ class MainWindow(QtWidgets.QMainWindow):
         
     def get_comport_list(self):
             self.ports = set([a[0] for a in comports()])
-            info("ports read as {}".format(self.ports))
+            # info("ports read as {}".format(self.ports))
         
     def update_comport_list(self):
         t = Thread(target=self.get_comport_list)
@@ -137,7 +137,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.scope.removeItem(self.vLine)
             self.scope.removeItem(self.hLine)
     
-    def onButtonToggle(self, checked):
+    def onCaptureToggle(self, checked):
         if(checked):
             if self.start_capture():
                 self.comport_timer.stop()

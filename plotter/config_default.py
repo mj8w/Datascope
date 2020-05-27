@@ -10,9 +10,10 @@ config = {
     # all of the possible signals must be defined even if they aren't being used.
     # colors are those acceptable to pyqtgraph.mkColor()
     # width and precision are arguments for string formatting of the crosshairs statistics
+    # kwargs can be found in the library - site-packages\pyqtgraph\graphicsItems\PlotDataItem.py 
     "signals":[
         {"name":"Red", "color":"FF0000", "width":4, "precision":2, "scale":1.0 },
-        {"name":"Blue", "color":"0000FF", "width":4, "precision":4, "scale":1.0 },
+        {"name":"Blue", "color":"0000FF", "width":4, "precision":4, "scale":1.0, "kwargs":{"symbolBrush":(0,0,255)}},
         {"name":"Green", "color":"00FF00", "width":0, "precision":2, "scale":1.0 },
         {"name":"Yellow", "color":"FFFF00", "width":0, "precision":2, "scale":1.0 },
     ],
