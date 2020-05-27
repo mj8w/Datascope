@@ -7,7 +7,10 @@ import pyqtgraph as pg
 from threading import Thread
 from serial.tools.list_ports import comports
 
+# list the input decoder classes that could be used as specified in config.py
 from get_csv import CSV_Buffer
+from get_binary import DecodeBinary
+
 from plot_data import PlotData
 
 from init import NoConfig, logset
@@ -38,6 +41,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.plot_count = config["max_signal_count"]
         signals = config["signals"]
+        self.InputClass = config["InputClass"]
         self.plot_data = [
             PlotData(self.scope, self.scroll, signals[0]),
             PlotData(self.scope, self.scroll, signals[1]),
@@ -151,13 +155,12 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def start_capture(self):
         """ Start capture thread and start collecting data """
-        
         for i in range(self.plot_count):
             self.plot_data[i].reset()
         self.max_data = 0
 
         # start data capture thread which composes packets and buffers them
-        self.capture_thread = CSV_Buffer(self.selected_com_port)
+        self.capture_thread = globals()[self.InputClass](self.selected_com_port)
         if self.capture_thread.open():
             self.capture_thread.start()
             # start the local capture_timer that updates the plot data
